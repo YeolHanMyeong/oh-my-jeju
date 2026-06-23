@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>oh-my-jeju · 3D 지형 PoC</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js"></script>
+  <style>
+    html, body { margin: 0; height: 100%; }
+    #map { position: absolute; inset: 0; }
+    .hud {
+      position: absolute; top: 10px; left: 10px; z-index: 10;
+      display: flex; gap: 8px; align-items: center;
+      font: 13px/1.4 -apple-system, sans-serif;
+    }
+    .hud button {
+      padding: 6px 14px; border: 0; border-radius: 6px; cursor: pointer;
+      background: #1a1a2e; color: #fff; font-weight: 600;
+    }
+    #fps {
+      padding: 6px 10px; border-radius: 6px;
+      background: rgba(0,0,0,.65); color: #0f0; font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="hud">
+    <button id="toggle3d">2D로 보기</button>
+    <button id="tour">한라산 투어</button>
+    <span id="fps">FPS: --</span>
+  </div>
+
+  <script>
+    const protocol = new pmtiles.Protocol();
+    maplibregl.addProtocol('pmtiles', protocol.tile);
+    const demUrl = new URL('../tiles/jeju-terrain.pmtiles', location.href).href;
+
+    const map = new maplibregl.Map({
+      container: 'map',
+      center: [126.545, 33.379],   // 한라산
+      zoom: 11.4,
+      pitch: 68,
+      bearing: -18,
+      maxPitch: 80,
+      maxBounds: [[126.05, 33.05], [127.0, 33.65]],  // 지형 DEM 타일 커버리지와 일치 (build_terrain.sh BBOX_*)
+      style: {
+        version: 8,
+        sources: {
+          satellite: {
+            type: 'raster',
+            tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+            tileSize: 256,
+            maxzoom: 18,
+            attribution: 'Esri, Maxar, Earthstar Geographics | DEM: Copernicus GLO-30',
+          },
+          jejuDem: {
+            type: 'raster-dem',
+            url: 'pmtiles://' + demUrl,
+            tileSize: 512,
+            encoding: 'mapbox',
+            maxzoom: 12,
+          },
+        },
+        layers: [
+          { id: 'satellite', type: 'raster', source: 'satellite' },
+          {
+            id: 'hillshade', type: 'hillshade', source: 'jejuDem',
+            paint: {
+              'hillshade-exaggeration': 0.25,
+              'hillshade-shadow-color': '#1a2633',
+            },
+          },
+        ],
+        sky: {
+          'sky-color': '#7fb8e6',
+          'horizon-color': '#e8f4fb',
+          'fog-color': '#dfe9f0',
+          'sky-horizon-blend': 0.6,
+          'horizon-fog-blend': 0.6,
+          'fog-ground-blend': 0.85,
+        },
+        terrain: { source: 'jejuDem', exaggeration: 1.35 },
+      },
+    });
+
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }));
+    map.addControl(new maplibregl.TerrainControl({ source: 'jejuDem', exaggeration: 1.35 }));
+    map.addControl(new maplibregl.ScaleControl());
+
+    // 2D/3D 토글
+    let is3d = true;
+    document.getElementById('toggle3d').addEventListener('click', () => {
+      is3d = !is3d;
+      map.setTerrain(is3d ? { source: 'jejuDem', exaggeration: 1.35 } : null);
+      map.easeTo({ pitch: is3d ? 68 : 0, duration: 800 });
+      document.getElementById('toggle3d').textContent = is3d ? '2D로 보기' : '3D로 보기';
+    });
+
+    // 한라산 주위 회전 투어 (성능 부하 테스트 겸용)
+    let touring = false;
+    document.getElementById('tour').addEventListener('click', () => {
+      touring = !touring;
+      if (touring) rotate();
+    });
+    function rotate() {
+      if (!touring) return;
+      map.rotateTo(map.getBearing() + 90, { duration: 12000, easing: t => t });
+      setTimeout(rotate, 12000);
+    }
+
+    // FPS 미터 (1초 롤링)
+    let frames = 0, last = performance.now();
+    function fpsLoop(now) {
+      frames++;
+      if (now - last >= 1000) {
+        document.getElementById('fps').textContent = 'FPS: ' + frames;
+        frames = 0; last = now;
+      }
+      requestAnimationFrame(fpsLoop);
+    }
+    requestAnimationFrame(fpsLoop);
+  </script>
+</body>
+</html>

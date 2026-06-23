@@ -1,0 +1,40 @@
+{
+  "name": "@oh-my-jeju/map-react",
+  "version": "0.1.0",
+  "license": "MIT",
+  "description": "oh-my-jeju 지도 코어의 React 컴포넌트 래퍼",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "dev": "tsup src/index.ts --format esm --dts --watch"
+  },
+  "dependencies": {
+    "@oh-my-jeju/map-core": "workspace:*",
+    "@types/geojson": "^7946.0.16"
+  },
+  "peerDependencies": {
+    "maplibre-gl": "^5.0.0",
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "maplibre-gl": "^5.6.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tsup": "^8.5.0",
+    "typescript": "~5.8.3"
+  }
+}

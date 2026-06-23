@@ -1,0 +1,242 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  font: 14px/1.5 -apple-system, 'Apple SD Gothic Neo', 'Pretendard', sans-serif;
+  color: #1c1c28;
+}
+
+.shell {
+  display: flex;
+  height: 100%;
+}
+
+.map-pane {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+}
+
+/* ── 사이드바 (데스크톱) ─────────────────────────── */
+.sidebar {
+  width: 340px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  z-index: 20;
+  box-shadow: 2px 0 14px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-head {
+  padding: 18px 18px 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.sidebar-head h1 {
+  margin: 0;
+  font-size: 19px;
+  letter-spacing: -0.3px;
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: #ff8a3d;
+  border-radius: 99px;
+  padding: 2px 8px;
+  vertical-align: 3px;
+  margin-left: 4px;
+}
+
+.tagline {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #8a8a96;
+}
+
+.sheet-toggle {
+  display: none;
+}
+
+.controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 18px;
+  border-bottom: 1px solid #eee;
+}
+
+.controls select,
+.controls .ghost {
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.route-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.count {
+  margin: 0;
+  padding: 10px 18px 6px;
+  font-size: 12px;
+  color: #8a8a96;
+}
+
+.spot-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 12px 12px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.spot-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  margin-top: 6px;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.spot-card:hover {
+  background: #fff7f1;
+  border-color: #ffc59e;
+}
+
+.spot-card.selected {
+  border-color: #ff8a3d;
+  background: #fff3ea;
+}
+
+.spot-card .row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.spot-card strong {
+  font-size: 14px;
+}
+
+.rating {
+  font-size: 12px;
+  color: #ff8a3d;
+  font-weight: 700;
+}
+
+.spot-card .cat {
+  font-size: 11px;
+  color: #ff8a3d;
+  font-weight: 600;
+}
+
+.spot-card .desc {
+  font-size: 12px;
+  color: #6f6f7a;
+}
+
+.empty {
+  padding: 24px 12px;
+  text-align: center;
+  color: #9a9aa4;
+  font-size: 13px;
+}
+
+/* ── 팝업 ────────────────────────────────────────── */
+.maplibregl-popup-content {
+  font: 13px/1.5 -apple-system, 'Apple SD Gothic Neo', sans-serif;
+  padding: 12px 14px;
+  border-radius: 10px;
+}
+
+.spot-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 150px;
+}
+
+.spot-popup .cat {
+  font-size: 11px;
+  color: #ff8a3d;
+  font-weight: 600;
+}
+
+.spot-popup p {
+  margin: 2px 0 0;
+  color: #555;
+}
+
+/* ── 모바일: 바텀시트 ─────────────────────────────── */
+@media (max-width: 768px) {
+  .shell {
+    flex-direction: column;
+  }
+
+  .map-pane {
+    order: -1;
+  }
+
+  .sidebar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-height: 96px;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.18);
+    transition: max-height 0.25s ease;
+    overflow: hidden;
+  }
+
+  .sidebar.open {
+    max-height: 60%;
+  }
+
+  .sidebar-head {
+    position: relative;
+    padding-right: 96px;
+  }
+
+  .sheet-toggle {
+    display: block;
+    position: absolute;
+    top: 16px;
+    right: 14px;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 600;
+  }
+}

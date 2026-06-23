@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+
+# Playwright MCP 디버그 산출물
+.playwright-mcp/
+
+# 지형 파이프라인 (재생성 가능 — poc/terrain/scripts/build_terrain.sh)
+#  - 중간 산출물
+poc/terrain/data/_work/
+#  - 원본 DEM: 용량이 커서 커밋하지 않음. 받는 법은 poc/terrain/README.md 참고
+poc/terrain/data/*.tif
+#  - 파이프라인 출력 tiles: 앱이 쓰는 최종 복사본은 apps/starter/public/tiles에 보존됨
+poc/terrain/tiles/

@@ -1,0 +1,34 @@
+{
+  "name": "@oh-my-jeju/map-core",
+  "version": "0.1.0",
+  "license": "MIT",
+  "description": "제주도에 미리 맞춰진 MapLibre 기반 2D/3D 지도 코어 (프레임워크 무관)",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "dev": "tsup src/index.ts --format esm --dts --watch"
+  },
+  "peerDependencies": {
+    "maplibre-gl": "^5.0.0"
+  },
+  "dependencies": {
+    "@types/geojson": "^7946.0.16",
+    "pmtiles": "^3.2.1"
+  },
+  "devDependencies": {
+    "maplibre-gl": "^5.6.0",
+    "tsup": "^8.5.0",
+    "typescript": "~5.8.3"
+  }
+}

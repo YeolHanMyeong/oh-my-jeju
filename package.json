@@ -1,0 +1,15 @@
+{
+  "name": "oh-my-jeju",
+  "private": true,
+  "description": "제주도 해커톤 팀을 위한 웹 2D/3D 지도 모듈 + BYOD 데이터 소켓 (지형 내장)",
+  "license": "MIT",
+  "packageManager": "pnpm@10.30.3",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter \"./packages/*\" run build && pnpm --filter starter run build",
+    "build:packages": "pnpm -r --filter \"./packages/*\" run build",
+    "dev": "pnpm --filter starter run dev"
+  }
+}
