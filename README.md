@@ -1,21 +1,29 @@
 # oh-my-jeju
 
-**제주도 해커톤 스타터팩** — 받자마자 제주 3D 지도 위에서 너희 아이디어를 시작할 수 있다.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![MapLibre GL JS](https://img.shields.io/badge/MapLibre_GL_JS-5-1f6feb)
+![React](https://img.shields.io/badge/React-19-61dafb)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6)
+![Vite](https://img.shields.io/badge/Vite-6-646cff)
+
+**제주도 해커톤 스타터팩** — 받자마자 제주 3D 지도 위에서 아이디어를 시작할 수 있는 템플릿입니다.
+
+![oh-my-jeju 스타터 앱 — 한라산 3D 지형 위 클러스터와 사이드 리스트](poc/terrain/shots/starter-cluster.png)
 
 지도 엔진, 고품질 제주 지형, 지도 서비스의 공통 기능(클러스터·히트맵·팝업·경로·현재위치·
-리스트 연동 셸)은 미리 만들어져 있다. **데이터는 너희가 가져온다(BYOD)** — 어떤 GeoJSON이든
-꽂으면 바로 시각화된다. 데이터 출처·변환법은 [docs/data-sources.md](docs/data-sources.md) 참고.
+리스트 연동 셸)이 미리 만들어져 있습니다. **데이터는 직접 가져옵니다(BYOD)** — 어떤 GeoJSON이든
+꽂으면 바로 시각화됩니다. 데이터 출처·변환법은 [docs/data-sources.md](docs/data-sources.md)를 참고하세요.
 
 ## 시작 (3분)
 
 ```bash
-# 이 레포를 템플릿으로 (GitHub: Use this template / 로컬: degit)
+# 이 레포를 템플릿으로 사용 (GitHub: Use this template / 로컬: degit)
 pnpm install
 pnpm dev          # → http://localhost:5173
 ```
 
-뜨면 보이는 것: 한라산 3D 지형, 샘플 관광지 15곳(클러스터), 사이드 리스트 ↔ 지도 연동.
-`apps/starter/src/sample-data.ts`의 안내를 따라 샘플을 너희 데이터로 교체하면 된다.
+실행하면 한라산 3D 지형, 샘플 관광지 15곳(클러스터), 사이드 리스트 ↔ 지도 연동이 보입니다.
+`apps/starter/src/sample-data.ts`의 안내를 따라 샘플을 직접 준비한 데이터로 교체하면 됩니다.
 
 ## 받으면 들어있는 것
 
@@ -32,13 +40,15 @@ pnpm dev          # → http://localhost:5173
 | 베이스맵 프리셋 | `basemap="satellite\|osm\|vworld-*"` ([VWorld 키](https://www.vworld.kr) 필요 시) |
 | 앱 셸 (리스트↔지도 동기화, 모바일 바텀시트) | `apps/starter` 그 자체 |
 
-React가 아니어도 된다 — `@oh-my-jeju/map-core`는 프레임워크 무관이고,
-`jeju.map`으로 원본 maplibregl.Map에 항상 접근할 수 있다.
+표의 `terrainUrl`은 루트 배포 기준 예시입니다 — 서브패스 배포는 아래 [배포](#배포)를 참고하세요.
+
+React가 아니어도 됩니다 — `@oh-my-jeju/map-core`는 프레임워크에 무관하며,
+`jeju.map`으로 원본 maplibregl.Map에 항상 접근할 수 있습니다.
 
 ## 구조
 
 ```
-apps/starter/      # ★ 너희가 고쳐나갈 앱 (셸 + 샘플 데이터)
+apps/starter/      # ★ 직접 고쳐나갈 앱 (셸 + 샘플 데이터)
 packages/
   map-core/        # 지도 코어 (vanilla TS)
   map-react/       # React 래퍼
@@ -60,13 +70,13 @@ poc/terrain/       # 지형 타일 생산 파이프라인 (DEM → PMTiles)
 />
 ```
 
-CSV/SHP였다면: [docs/recipes/byod-quickstart.md](docs/recipes/byod-quickstart.md) (5분).
-공간 질의가 필요하면: [docs/recipes/postgis.md](docs/recipes/postgis.md).
+CSV/SHP라면 [docs/recipes/byod-quickstart.md](docs/recipes/byod-quickstart.md) (5분),
+공간 질의가 필요하면 [docs/recipes/postgis.md](docs/recipes/postgis.md)를 참고하세요.
 
 ## 지형 품질 더 올리기 (선택)
 
-내장 지형은 Copernicus 30m DEM 기반. 국토지리정보원 5m DEM으로 교체하면 더 정밀해진다 —
-[poc/terrain/README.md](poc/terrain/README.md)의 파이프라인에 입력만 바꾸면 됨.
+내장 지형은 Copernicus 30m DEM 기반입니다. 국토지리정보원 5m DEM으로 교체하면 더 정밀해집니다 —
+[poc/terrain/README.md](poc/terrain/README.md)의 파이프라인에 입력만 바꾸면 됩니다.
 
 ## 배포
 
@@ -74,17 +84,17 @@ CSV/SHP였다면: [docs/recipes/byod-quickstart.md](docs/recipes/byod-quickstart
 pnpm build          # apps/starter/dist 정적 빌드
 ```
 
-- **루트 호스팅**(Cloudflare/Netlify, `user.github.io` 직속): 그대로 올리면 된다.
+- **루트 호스팅**(Cloudflare/Netlify, `user.github.io` 직속): 그대로 올리면 됩니다.
 - **GitHub Pages 프로젝트 사이트**(`user.github.io/<repo>/`처럼 서브패스): base를 맞춰야 에셋·지형
-  타일이 404나지 않는다.
+  타일이 404나지 않습니다.
   ```bash
   GITHUB_PAGES=1 pnpm --filter starter build   # vite.config.ts의 base='/oh-my-jeju/' 적용
   ```
-  레포 이름이 다르면 `vite.config.ts`의 base 값을 바꾼다. 지형 경로는 `import.meta.env.BASE_URL`
-  기준이라 base만 맞추면 자동으로 따라간다.
-- **베이스맵**: 키리스 `satellite`(Esri)는 프로토타입용 — 공개 배포 앱은 `osm` 또는 `vworld-*`
-  권장. VWorld 키는 발급 시 등록한 **도메인에서만** 동작하니 배포 도메인을 vworld.kr에 등록해야
-  한다(안 하면 403).
+  레포 이름이 다르면 `vite.config.ts`의 base 값을 바꾸세요. 지형 경로는 `import.meta.env.BASE_URL`
+  기준이라 base만 맞추면 자동으로 따라갑니다.
+- **베이스맵**: 키리스 `satellite`(Esri)는 프로토타입용입니다 — 공개 배포 앱은 `osm` 또는 `vworld-*`를
+  권장합니다. VWorld 키는 발급 시 등록한 **도메인에서만** 동작하므로 배포 도메인을 vworld.kr에
+  등록해야 합니다(미등록 시 403).
 
 ## 로드맵
 
