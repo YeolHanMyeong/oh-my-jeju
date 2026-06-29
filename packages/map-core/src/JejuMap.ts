@@ -1,17 +1,18 @@
+import type { FeatureCollection } from 'geojson';
 import maplibregl, {
   GeolocateControl,
   Map as MapLibreMap,
   NavigationControl,
   ScaleControl,
   type MapOptions,
+  type RasterDEMSourceSpecification,
   type StyleSpecification,
 } from 'maplibre-gl';
 import { Protocol } from 'pmtiles';
-import type { FeatureCollection } from 'geojson';
-import { buildBasemap, type BasemapId } from './basemaps.js';
+import { type BasemapId, buildBasemap } from './basemaps.js';
 import { JEJU_MAX_BOUNDS, LANDMARKS, type Landmark, type LandmarkId } from './constants.js';
-import { createDataLayer, type DataLayerHandle, type DataLayerOptions } from './dataLayer.js';
-import { createRoute, type RouteHandle, type RouteOptions } from './route.js';
+import { type DataLayerHandle, type DataLayerOptions, createDataLayer } from './dataLayer.js';
+import { type RouteHandle, type RouteOptions, createRoute } from './route.js';
 
 const DEM_SOURCE_ID = 'jeju-dem';
 
@@ -52,6 +53,12 @@ export interface JejuMapOptions {
   vworldKey?: string;
   /** 지형 PMTiles URL (예: '/tiles/jeju-terrain.pmtiles'). 없으면 3D 지형 비활성 */
   terrainUrl?: string;
+  /**
+   * 지형 raster-dem 소스의 maxzoom. 기본 12. 더 높은 zoom으로 구운 DEM(예: NGII 5m → z14)을
+   * 쓸 때 올린다 — 파이프라인 max_z와 반드시 일치시킬 것(낮으면 z12 타일을 overzoom해 추가
+   * 디테일이 안 나오고, 높으면 없는 타일을 요청한다).
+   */
+  terrainMaxZoom?: number;
   /** 지형 과장 배율. 기본 1.35 */
   exaggeration?: number;
   /** 음영기복(hillshade) 레이어. 기본 true (terrainUrl 있을 때) */
@@ -71,6 +78,12 @@ export interface JejuMapOptions {
   glyphs?: string;
   /** maplibre Map 생성 옵션 직접 오버라이드 (escape hatch) */
   mapOptions?: Partial<Omit<MapOptions, 'container' | 'style'>>;
+  /**
+   * ready()가 reject되기까지의 최대 대기 ms. 기본 15000. 0이면 비활성(load만 무한 대기).
+   * 스타일/타일 로드가 끝나지 않으면(예: terrainUrl 아카이브에 bounds 내 타일 누락, 도달 불가
+   * 베이스맵) MapLibre의 'load'가 영영 발생하지 않으므로, 무한 대기 대신 이 시간 후 reject한다.
+   */
+  readyTimeout?: number;
 }
 
 /**
@@ -93,6 +106,8 @@ export class JejuMap {
   private readonly _exaggeration: number;
   private readonly _hasTerrain: boolean;
   private readonly _readyPromise: Promise<this>;
+  /** ready() 대기를 정리(타이머 해제 + 리스너 off)하는 함수 — destroy() 시 호출해 teardown 후 reject 방지 */
+  private _cancelReady: (() => void) | null = null;
 
   constructor(options: JejuMapOptions) {
     const {
@@ -101,6 +116,7 @@ export class JejuMap {
       basemap = 'satellite',
       vworldKey,
       terrainUrl,
+      terrainMaxZoom = 12,
       exaggeration = 1.35,
       hillshade = true,
       view = 'hallasan',
@@ -108,6 +124,7 @@ export class JejuMap {
       controls = true,
       geolocate = false,
       glyphs = 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+      readyTimeout = 15000,
       mapOptions = {},
     } = options;
 
@@ -134,13 +151,13 @@ export class JejuMap {
 
     if (terrainUrl) {
       ensurePmtilesProtocol();
-      const demSource = {
+      const demSource: RasterDEMSourceSpecification = {
         type: 'raster-dem',
         url: normalizeTerrainUrl(terrainUrl),
         tileSize: 512,
         encoding: 'mapbox',
-        maxzoom: 12,
-      } as const;
+        maxzoom: terrainMaxZoom,
+      };
       style.sources[DEM_SOURCE_ID] = demSource;
       if (hillshade) {
         // terrain과 소스를 공유하면 렌더링 품질이 떨어진다는 maplibre 권고에 따라 분리
@@ -189,15 +206,49 @@ export class JejuMap {
       );
     }
 
-    this._readyPromise = new Promise((resolve) => {
-      this.map.once('load', () => {
+    this._readyPromise = new Promise((resolve, reject) => {
+      let settled = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const onLoad = () => {
+        if (settled) return;
+        settled = true;
+        if (timer) clearTimeout(timer);
+        this._cancelReady = null;
         this._loaded = true;
         resolve(this);
-      });
+      };
+      this.map.once('load', onLoad);
+      if (readyTimeout > 0) {
+        timer = setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          this.map.off('load', onLoad);
+          this._cancelReady = null;
+          reject(
+            new Error(
+              `[JejuMap] 지도가 ${readyTimeout}ms 내에 로드되지 않았습니다. terrainUrl 아카이브에 bounds 내 모든 타일(바다 포함)이 있는지, 베이스맵/타일 URL이 도달 가능한지 확인하세요. (readyTimeout 옵션으로 조정·비활성 가능)`,
+            ),
+          );
+        }, readyTimeout);
+      }
+      // destroy()가 load 전에 호출되면 타이머를 정리해, teardown 후 reject(미처리 rejection)를 막는다.
+      this._cancelReady = () => {
+        if (settled) return;
+        settled = true;
+        if (timer) clearTimeout(timer);
+        this.map.off('load', onLoad);
+      };
     });
+    // destroy 전에 누구도 .catch하지 않은 채 reject되면 unhandled rejection이 되므로, 소비자가
+    // ready()를 호출하지 않더라도 안전하도록 no-op catch를 붙여 둔다(원본 promise는 그대로 반환).
+    this._readyPromise.catch(() => {});
   }
 
-  /** 스타일·초기 타일 로드 완료 시 resolve */
+  /**
+   * 스타일·초기 타일 로드 완료 시 resolve.
+   * ⚠️ reject 가능: readyTimeout(기본 15s) 내에 'load'가 발생하지 않으면 reject된다
+   * (도달 불가 베이스맵, bounds 내 DEM 타일 누락 등). 호출부는 .catch로 degrade를 처리하라.
+   */
   ready(): Promise<this> {
     return this._readyPromise;
   }
@@ -206,12 +257,21 @@ export class JejuMap {
     return this._mode;
   }
 
-  /** 2D/3D 전환. 3D는 terrainUrl이 설정된 경우에만 동작 */
-  setMode(mode: MapMode, { animate = true }: { animate?: boolean } = {}): void {
-    if (mode === this._mode) return;
+  /** terrainUrl이 설정되어 3D 지형을 쓸 수 있는지 여부 */
+  get hasTerrain(): boolean {
+    return this._hasTerrain;
+  }
+
+  /**
+   * 2D/3D 전환. 3D는 terrainUrl이 설정된 경우에만 동작.
+   * @returns 요청한 모드가 실제 적용됐는지(또는 이미 그 모드였는지). terrainUrl 없이 3D를
+   *   요청하면 false를 반환한다 — 호출부가 실제 모드(get mode)와 UI 상태를 reconcile할 수 있다.
+   */
+  setMode(mode: MapMode, { animate = true }: { animate?: boolean } = {}): boolean {
+    if (mode === this._mode) return true;
     if (mode === '3d' && !this._hasTerrain) {
       console.warn('[JejuMap] terrainUrl 없이 3D 모드를 켤 수 없습니다.');
-      return;
+      return false;
     }
     this._mode = mode;
     const apply = () => {
@@ -221,6 +281,7 @@ export class JejuMap {
       this.map.easeTo({ pitch: mode === '3d' ? 60 : 0, duration: animate ? 800 : 0 });
     };
     this._whenLoaded(apply);
+    return true;
   }
 
   /** 랜드마크 프리셋 또는 임의 좌표로 카메라 이동 */
@@ -240,7 +301,8 @@ export class JejuMap {
    * 어떤 데이터든 꽂으면 기본 스타일·팝업·클릭이 자동 적용되는 BYOD 소켓.
    *
    * ```ts
-   * const layer = jeju.addDataLayer({ data: myGeojson, type: 'cluster', popup: f => f.properties.name });
+   * // ⚠️ 문자열 popup은 raw HTML로 삽입된다 — 신뢰 못 할 값은 escapeHtml로 감쌀 것
+   * const layer = jeju.addDataLayer({ data: myGeojson, type: 'cluster', popup: f => escapeHtml(f.properties.name) });
    * layer.setData(updated); // 실시간 갱신
    * layer.remove();
    * ```
@@ -294,6 +356,8 @@ export class JejuMap {
   }
 
   destroy(): void {
+    this._cancelReady?.();
+    this._cancelReady = null;
     this.map.remove();
   }
 }

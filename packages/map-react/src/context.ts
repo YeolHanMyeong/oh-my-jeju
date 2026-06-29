@@ -1,5 +1,5 @@
-import { createContext, useContext } from 'react';
 import type { JejuMap } from '@oh-my-jeju/map-core';
+import { createContext, useContext } from 'react';
 
 export const JejuMapContext = createContext<JejuMap | null>(null);
 

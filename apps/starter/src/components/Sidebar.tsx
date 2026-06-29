@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import type { MapMode } from '@oh-my-jeju/map-react';
-import type { Spot } from '../sample-data.js';
+import { useState } from 'react';
 import type { Viz } from '../App.js';
+import type { Spot } from '../sample-data.js';
 
 interface SidebarProps {
   spots: Spot[];
@@ -40,18 +40,32 @@ export function Sidebar({
           oh-my-jeju <span className="badge">starter</span>
         </h1>
         <p className="tagline">제주 지도 스타터팩 — 목록의 샘플을 너희 데이터로 교체하세요</p>
-        <button className="sheet-toggle" onClick={() => setOpen((o) => !o)}>
+        <button
+          type="button"
+          className="sheet-toggle"
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+        >
           {open ? '지도 보기 ▾' : '목록 보기 ▴'}
         </button>
       </header>
 
       <div className="controls">
-        <select value={viz} onChange={(e) => onVizChange(e.target.value as Viz)}>
+        <select
+          aria-label="시각화 유형"
+          value={viz}
+          onChange={(e) => onVizChange(e.target.value as Viz)}
+        >
           <option value="cluster">클러스터</option>
           <option value="heatmap">히트맵</option>
           <option value="circle">포인트</option>
         </select>
-        <button className="ghost" onClick={() => onModeChange(mode === '3d' ? '2d' : '3d')}>
+        <button
+          type="button"
+          className="ghost"
+          aria-label={mode === '3d' ? '2D 지도로 전환' : '3D 지형으로 전환'}
+          onClick={() => onModeChange(mode === '3d' ? '2d' : '3d')}
+        >
           {mode === '3d' ? '2D' : '3D'}
         </button>
         <label className="route-toggle">
@@ -70,6 +84,7 @@ export function Sidebar({
         {list.map((s) => (
           <li key={s.properties.id}>
             <button
+              type="button"
               className={`spot-card ${selectedId === s.properties.id ? 'selected' : ''}`}
               onClick={() => onSelect(s)}
             >

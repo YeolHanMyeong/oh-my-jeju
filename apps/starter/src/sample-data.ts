@@ -32,7 +32,15 @@ export interface SpotProps {
 
 export type Spot = Feature<Point, SpotProps>;
 
-function spot(id: string, name: string, category: string, desc: string, rating: number, lng: number, lat: number): Spot {
+function spot(
+  id: string,
+  name: string,
+  category: string,
+  desc: string,
+  rating: number,
+  lng: number,
+  lat: number,
+): Spot {
   return {
     type: 'Feature',
     properties: { id, name, category, desc, rating },

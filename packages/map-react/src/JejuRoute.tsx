@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
 import type { RouteOptions } from '@oh-my-jeju/map-core';
+import { useEffect, useRef } from 'react';
 import { useJejuMap } from './context.js';
 
 export interface JejuRouteProps extends RouteOptions {
@@ -20,6 +20,7 @@ export function JejuRoute({ coordinates, ...options }: JejuRouteProps) {
   const optionsRef = useRef(options);
   optionsRef.current = options;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: key(내용 해시)는 의도적 재생성 트리거다 — 좌표/옵션은 ref 경유로 최신값을 쓴다.
   useEffect(() => {
     const handle = jeju.addRoute(coordsRef.current, optionsRef.current);
     return () => handle.remove();

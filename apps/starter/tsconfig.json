@@ -1,7 +1,12 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["vite/client", "node"]
+    "types": ["vite/client", "node"],
+    // vite.config.ts의 src 별칭과 일치 — tsc도 dist(스테일)가 아닌 src를 타입체크하게 한다
+    "paths": {
+      "@oh-my-jeju/map-core": ["../../packages/map-core/src/index.ts"],
+      "@oh-my-jeju/map-react": ["../../packages/map-react/src/index.ts"]
+    }
   },
   "include": ["src", "vite.config.ts"]
 }

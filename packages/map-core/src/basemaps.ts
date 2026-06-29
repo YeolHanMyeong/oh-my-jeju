@@ -9,12 +9,7 @@ import type { LayerSpecification, SourceSpecification } from 'maplibre-gl';
  *   ⚠️ VWorld 키는 발급 시 등록한 도메인에서만 동작한다. localhost는 기본 허용되지만, 배포
  *   도메인(예: *.github.io)을 vworld.kr 콘솔에 등록하지 않으면 타일이 403으로 빈 화면이 된다.
  */
-export type BasemapId =
-  | 'satellite'
-  | 'osm'
-  | 'vworld-base'
-  | 'vworld-satellite'
-  | 'vworld-hybrid';
+export type BasemapId = 'satellite' | 'osm' | 'vworld-base' | 'vworld-satellite' | 'vworld-hybrid';
 
 export interface BasemapSpec {
   sources: Record<string, SourceSpecification>;
@@ -35,8 +30,7 @@ function vworldTiles(key: string, layer: string, ext: string): SourceSpecificati
 export function buildBasemap(id: BasemapId, vworldKey?: string): BasemapSpec {
   if (id.startsWith('vworld-') && !vworldKey) {
     throw new Error(
-      `베이스맵 '${id}'에는 VWorld API 키가 필요합니다. ` +
-        `JejuMap 옵션에 vworldKey를 전달하거나, 키가 없으면 basemap: 'satellite'를 사용하세요.`,
+      `베이스맵 '${id}'에는 VWorld API 키가 필요합니다. JejuMap 옵션에 vworldKey를 전달하거나, 키가 없으면 basemap: 'satellite'를 사용하세요.`,
     );
   }
 

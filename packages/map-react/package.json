@@ -9,22 +9,32 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     }
   },
   "files": ["dist"],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --clean",
-    "dev": "tsup src/index.ts --format esm --dts --watch"
+    "dev": "tsup src/index.ts --format esm --dts --watch",
+    "typecheck": "tsc --noEmit",
+    "prepack": "tsup src/index.ts --format esm,cjs --dts --clean"
   },
   "dependencies": {
     "@oh-my-jeju/map-core": "workspace:*",
     "@types/geojson": "^7946.0.16"
   },
   "peerDependencies": {
-    "maplibre-gl": "^5.0.0",
+    "maplibre-gl": "^5.6.0",
     "react": ">=18",
     "react-dom": ">=18"
   },

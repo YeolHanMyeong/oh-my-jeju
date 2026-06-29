@@ -1,4 +1,4 @@
-import { Marker, type Map as MapLibreMap } from 'maplibre-gl';
+import { type Map as MapLibreMap, Marker } from 'maplibre-gl';
 
 export interface RouteOptions {
   id?: string;
@@ -48,12 +48,11 @@ export function createRoute(
 
   let marker: Marker | null = null;
   let raf = 0;
+  let onMapRemove: (() => void) | null = null;
 
   if (options.animate && coordinates.length > 1) {
     const el = document.createElement('div');
-    el.style.cssText =
-      `width:14px;height:14px;border-radius:50%;background:${color};` +
-      'border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.4)';
+    el.style.cssText = `width:14px;height:14px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.4)`;
     marker = new Marker({ element: el }).setLngLat(coordinates[0]).addTo(map);
 
     // 누적 거리 테이블 (위도 보정 평면 근사 — 애니메이션 보간용으로 충분)
@@ -77,13 +76,19 @@ export function createRoute(
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    map.once('remove', () => cancelAnimationFrame(raf));
+    // 핸들로 remove하지 않고 맵이 통째로 파괴되는 경로용 fallback. handle.remove()에서 떼어준다.
+    onMapRemove = () => cancelAnimationFrame(raf);
+    map.once('remove', onMapRemove);
   }
 
   return {
     id,
     remove() {
       cancelAnimationFrame(raf);
+      if (onMapRemove) {
+        map.off('remove', onMapRemove);
+        onMapRemove = null;
+      }
       marker?.remove();
       for (const lid of [`${id}-line`, `${id}-casing`]) {
         if (map.getLayer(lid)) map.removeLayer(lid);

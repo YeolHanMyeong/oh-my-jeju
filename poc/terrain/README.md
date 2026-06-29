@@ -4,7 +4,7 @@
 
 ## 결과 (2026-06-12)
 
-- DEM: Copernicus GLO-30 (30m, 인증 불필요) → terrain-RGB PMTiles **단일 8MB 파일** (z6–z12, 80타일, 제주 전역)
+- DEM: Copernicus GLO-30 (30m, 인증 불필요) → terrain-RGB PMTiles **단일 8MB 파일** (z6–z12, 152타일 / 고유 블롭 81개, 제주 전역)
 - 렌더링: MapLibre GL JS v5 + 3D terrain + hillshade + sky
 - 성능: 정지 121 FPS / 회전 투어 중 120–124 FPS (M-시리즈 맥, 디스플레이 주사율 고정, 프레임 드랍 없음)
 - 비주얼: `shots/` 참고 — z13.6 백록담 근접 뷰에서도 분화구 능선 유지
@@ -54,9 +54,12 @@ MapLibre가 해당 타일을 영영 pending으로 두어 `load` 이벤트가 발
 
 1. **NGII 5m DEM 교체** (품질 대폭 향상): 국토정보플랫폼(map.ngii.go.kr)에서 제주 수치표고모델 수동 다운로드(로그인 필요) 후:
    ```bash
-   ./build_terrain.sh ../data/ngii_dem_5m.tif jeju-terrain-hd 14
+   # 출력명은 jeju-terrain로 유지 → 앱이 그대로 소비. 입력과 max_zoom만 올린다.
+   ./build_terrain.sh ../data/ngii_dem_5m.tif jeju-terrain 14
    ```
-   파이프라인은 그대로, 입력과 max_zoom만 교체.
+   ⚠️ z12를 넘는 디테일을 실제로 쓰려면 raster-dem 소스 maxzoom도 함께 올려야 한다(기본 12):
+   `<JejuMapView terrainMaxZoom={14} />`. 안 올리면 MapLibre가 z12 타일을 overzoom해 추가 디테일이
+   나오지 않는다(빌드 용량만 증가). 출력 파일명을 바꿀 경우 App/데모의 `terrainUrl`도 함께 바꿀 것.
 2. **VWorld API 키 발급** → 한국어 라벨 베이스맵/위성 타일로 교체 (현재는 Esri World Imagery)
 3. PMTiles를 GitHub Pages/Cloudflare에 올리면 타일 서버 없이 배포 완료
 4. 검증된 이 구성을 `packages/map-core` 모듈로 정식 이전

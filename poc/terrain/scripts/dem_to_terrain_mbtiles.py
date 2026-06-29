@@ -30,6 +30,8 @@ INTERVAL = 0.1
 
 
 def encode_terrain_rgb(elev: np.ndarray) -> np.ndarray:
+    # 인코딩 가능 범위로 제한 → uint32 래핑(센티넬/garbage가 거대 고도로 둔갑)을 막는다
+    elev = np.clip(elev, BASE_VAL, 10000.0)
     v = np.round((elev - BASE_VAL) / INTERVAL).astype(np.uint32)
     rgb = np.empty((*elev.shape, 3), dtype=np.uint8)
     rgb[..., 0] = (v >> 16) & 0xFF
@@ -79,12 +81,16 @@ def main() -> None:
                     out_shape=(TILE_SIZE, TILE_SIZE),
                     resampling=rasterio.enums.Resampling.bilinear,
                     boundless=True,
-                    fill_value=nodata if nodata is not None else 0,
+                    fill_value=0,  # 데이터 범위 밖(boundless)은 해수면 0 — 센티넬을 섞지 않게
                 ).astype(np.float64)
 
+                # 내부 nodata + bilinear가 센티넬과 섞어 만든 garbage 정리.
+                # 정확히 센티넬과 같지 않은 중간값(-16000 등)은 == 비교로 못 잡으므로,
+                # 비현실적 고도(지구 밖) 범위를 0(바다)으로 떨어뜨린다.
                 if nodata is not None:
                     elev[elev == nodata] = 0.0
                 elev[~np.isfinite(elev)] = 0.0
+                elev[(elev < -500.0) | (elev > 9000.0)] = 0.0
 
                 if elev.max() < 0.5 and elev.min() > -0.5:
                     data = zero_png

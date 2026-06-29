@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4 # pnpm 버전은 package.json의 packageManager에서 읽음
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build packages (publishable dist)
+        run: pnpm build:packages
+
+      # 발행 패키지의 dual ESM/CJS 타입 정합성 검증 (exports types/require.d.cts)
+      - name: Check package types (are-the-types-wrong)
+        run: |
+          npx --yes @arethetypeswrong/cli --pack packages/map-core
+          npx --yes @arethetypeswrong/cli --pack packages/map-react
+
+      - name: Build app
+        run: pnpm build
+
+# 참고: GitHub Pages 배포는 base 경로가 레포명에 따라 달라지므로(포크 시 충돌) 의도적으로
+# 자동화하지 않았다. 배포는 README '배포' 섹션의 GITHUB_PAGES=1 빌드를 참고해 각자 추가할 것.

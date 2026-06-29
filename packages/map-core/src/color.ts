@@ -1,8 +1,12 @@
-/** '#rgb' 또는 '#rrggbb' → [r, g, b] */
+/** '#rgb' · '#rgba' · '#rrggbb' · '#rrggbbaa' → [r, g, b] (알파는 무시). 형식 불명이면 기본 파랑. */
 export function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace('#', '');
-  const full = h.length === 3 ? [...h].map((c) => c + c).join('') : h;
-  const num = parseInt(full, 16);
+  let h = hex.replace('#', '');
+  if (h.length === 8)
+    h = h.slice(0, 6); // #rrggbbaa → rrggbb
+  else if (h.length === 4) h = h.slice(0, 3); // #rgba → rgb
+  if (h.length === 3) h = [...h].map((c) => c + c).join('');
+  if (h.length !== 6 || /[^0-9a-f]/i.test(h)) return [10, 132, 255]; // 알 수 없는 형식 → 기본 파랑
+  const num = Number.parseInt(h, 16);
   return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
 }
 

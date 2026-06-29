@@ -1,13 +1,20 @@
+import type { Feature, FeatureCollection, Point } from 'geojson';
 import {
-  Popup,
   type ExpressionSpecification,
   type GeoJSONSource,
   type LayerSpecification,
-  type Map as MapLibreMap,
   type MapLayerMouseEvent,
+  type Map as MapLibreMap,
+  Popup,
 } from 'maplibre-gl';
-import type { Feature, FeatureCollection, Point } from 'geojson';
 import { mix, withAlpha } from './color.js';
+import {
+  autoType,
+  bboxOf,
+  choroplethFillExpr,
+  heatmapWeightExpr,
+  resolveChoroplethStops,
+} from './expr.js';
 
 /**
  * 시각화 프리셋.
@@ -16,7 +23,14 @@ import { mix, withAlpha } from './color.js';
  * - heatmap: 히트맵 (줌인하면 개별 포인트 표시)
  * - choropleth: 숫자 속성값에 따른 단계 구분도 (폴리곤)
  */
-export type DataLayerType = 'auto' | 'circle' | 'cluster' | 'heatmap' | 'line' | 'fill' | 'choropleth';
+export type DataLayerType =
+  | 'auto'
+  | 'circle'
+  | 'cluster'
+  | 'heatmap'
+  | 'line'
+  | 'fill'
+  | 'choropleth';
 
 export interface DataLayerOptions {
   /** 레이어 id. 생략 시 자동 생성 */
@@ -45,6 +59,10 @@ export interface DataLayerOptions {
   onClick?: (feature: Feature, lngLat: [number, number]) => void;
   /** 추가 후 데이터 전체가 보이도록 카메라 이동. 기본 false */
   fitBounds?: boolean;
+  /**
+   * data가 URL일 때 로드/파싱 실패 시 호출. console.error와 별개로 프로그램적 실패 처리(예: 실패 UI)에 쓴다.
+   */
+  onError?: (err: unknown) => void;
 }
 
 export interface DataLayerHandle {
@@ -118,10 +136,7 @@ export function createDataLayer(
     built = true;
 
     let type = options.type ?? 'auto';
-    if (type === 'auto') {
-      const g = fc.features[0]?.geometry?.type ?? 'Point';
-      type = g.includes('Polygon') ? 'fill' : g.includes('LineString') ? 'line' : 'circle';
-    }
+    if (type === 'auto') type = autoType(fc);
 
     // 폴리곤류는 지형 음영(hillshade) 아래에 깔아 입체감 유지
     const hillshadeBefore = map.getLayer('jeju-hillshade') ? 'jeju-hillshade' : undefined;
@@ -142,11 +157,22 @@ export function createDataLayer(
           filter: ['has', 'point_count'],
           paint: {
             'circle-color': [
-              'step', ['get', 'point_count'],
-              color, 25, mix(color, '#000000', 0.18), 100, mix(color, '#000000', 0.35),
+              'step',
+              ['get', 'point_count'],
+              color,
+              25,
+              mix(color, '#000000', 0.18),
+              100,
+              mix(color, '#000000', 0.35),
             ] as ExpressionSpecification,
             'circle-radius': [
-              'step', ['get', 'point_count'], 16, 25, 21, 100, 27,
+              'step',
+              ['get', 'point_count'],
+              16,
+              25,
+              21,
+              100,
+              27,
             ] as ExpressionSpecification,
             'circle-stroke-width': 2,
             'circle-stroke-color': '#ffffff',
@@ -178,8 +204,13 @@ export function createDataLayer(
           if (!f) return;
           const clusterId = (f.properties as { cluster_id: number }).cluster_id;
           const source = map.getSource(id) as GeoJSONSource;
-          const zoom = await source.getClusterExpansionZoom(clusterId);
-          map.easeTo({ center: (f.geometry as Point).coordinates as [number, number], zoom });
+          try {
+            const zoom = await source.getClusterExpansionZoom(clusterId);
+            if (destroyed) return; // await 동안 레이어/맵이 정리됐을 수 있음
+            map.easeTo({ center: (f.geometry as Point).coordinates as [number, number], zoom });
+          } catch (err) {
+            console.error('[JejuMap] 클러스터 확대 줌 계산 실패:', err);
+          }
         });
         on('mouseenter', `${id}-clusters`, () => {
           map.getCanvas().style.cursor = 'pointer';
@@ -193,23 +224,15 @@ export function createDataLayer(
 
       case 'heatmap': {
         map.addSource(id, { type: 'geojson', data: fc });
-        const heatmapWeight = (fcol: FeatureCollection): number | ExpressionSpecification => {
-          if (!options.property) return 1;
-          const vals = fcol.features
-            .map((f) => Number(f.properties?.[options.property!]))
-            .filter(Number.isFinite);
-          const max = vals.length ? Math.max(...vals) : 1;
-          return [
-            'interpolate', ['linear'],
-            ['coalesce', ['to-number', ['get', options.property]], 0],
-            0, 0, max || 1, 1,
-          ] as ExpressionSpecification;
-        };
-        const weight = heatmapWeight(fc);
-        // property 가중치는 데이터 범위(max)에 의존 → setData 시 재계산해 stale ramp 방지
+        const weight = heatmapWeightExpr(fc, options.property);
+        // property 가중치는 데이터 범위(min~max)에 의존 → setData 시 재계산해 stale ramp 방지
         if (options.property) {
           recomputePaint = (next) =>
-            map.setPaintProperty(`${id}-heat`, 'heatmap-weight', heatmapWeight(next));
+            map.setPaintProperty(
+              `${id}-heat`,
+              'heatmap-weight',
+              heatmapWeightExpr(next, options.property),
+            );
         }
         add({
           id: `${id}-heat`,
@@ -217,15 +240,38 @@ export function createDataLayer(
           source: id,
           paint: {
             'heatmap-weight': weight,
-            'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 8, 0.9, 13, 2] as ExpressionSpecification,
-            'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 8, 12, 13, 28] as ExpressionSpecification,
+            'heatmap-intensity': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              8,
+              0.9,
+              13,
+              2,
+            ] as ExpressionSpecification,
+            'heatmap-radius': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              8,
+              12,
+              13,
+              28,
+            ] as ExpressionSpecification,
             'heatmap-color': [
-              'interpolate', ['linear'], ['heatmap-density'],
-              0, 'rgba(0,0,0,0)',
-              0.2, withAlpha(mix(color, '#ffffff', 0.6), 0.5),
-              0.45, withAlpha(mix(color, '#ffffff', 0.3), 0.7),
-              0.7, withAlpha(color, 0.85),
-              1, mix(color, '#000000', 0.25),
+              'interpolate',
+              ['linear'],
+              ['heatmap-density'],
+              0,
+              'rgba(0,0,0,0)',
+              0.2,
+              withAlpha(mix(color, '#ffffff', 0.6), 0.5),
+              0.45,
+              withAlpha(mix(color, '#ffffff', 0.3), 0.7),
+              0.7,
+              withAlpha(color, 0.85),
+              1,
+              mix(color, '#000000', 0.25),
             ] as ExpressionSpecification,
             'heatmap-opacity': options.opacity ?? 0.85,
           },
@@ -239,47 +285,26 @@ export function createDataLayer(
       case 'choropleth': {
         map.addSource(id, { type: 'geojson', data: fc });
         const prop = options.property;
-        const choroplethFill = (fcol: FeatureCollection): string | ExpressionSpecification => {
-          // 사용자 지정 stops는 정렬·중복제거(아래 sortStops) — interpolate는 엄격히 오름차순이어야 함.
-          let stops = options.stops ? sortStops(options.stops) : undefined;
-          if (prop && !stops) {
-            const vals = fcol.features
-              .map((f) => Number(f.properties?.[prop]))
-              .filter(Number.isFinite);
-            if (vals.length) {
-              const min = Math.min(...vals);
-              const max = Math.max(...vals);
-              const step = (max - min) / 4 || 1;
-              const ramp = [
-                mix(color, '#ffffff', 0.8),
-                mix(color, '#ffffff', 0.55),
-                mix(color, '#ffffff', 0.3),
-                color,
-                mix(color, '#000000', 0.3),
-              ];
-              stops = ramp.map((c, i) => [min + step * i, c]);
-            }
-          }
-          if (!prop || !stops) return color;
-          return [
-            'interpolate', ['linear'],
-            ['coalesce', ['to-number', ['get', prop]], stops[0][0]],
-            ...stops.flat(),
-          ] as ExpressionSpecification;
-        };
-        const usableStops = options.stops
-          ? sortStops(options.stops).length > 0
-          : Boolean(prop) && fc.features.some((f) => Number.isFinite(Number(f.properties?.[prop!])));
-        if (!prop || !usableStops) {
+        // interpolate는 stop이 2개 이상이어야 유효 — 단일 stop/값이면 resolved=null → 단색 폴백
+        const resolved = resolveChoroplethStops(fc, prop, color, options.stops);
+        if (!resolved) {
           console.error(
-            `[JejuMap] choropleth 레이어 '${id}'에는 property(숫자 속성)와 유효한 값 또는 stops가 필요합니다. 단색 fill로 표시합니다.`,
+            `[JejuMap] choropleth 레이어 '${id}'에는 property(숫자 속성)와 유효한 값, 또는 2개 이상의 stops가 필요합니다. 단색 fill로 표시합니다.`,
           );
         }
-        const fillColor = choroplethFill(fc);
+        const fillColor = choroplethFillExpr(resolved, prop, color);
         // 자동 ramp(stops 미지정 + property)는 데이터 범위에 의존 → setData 시 재계산
         if (prop && !options.stops) {
           recomputePaint = (next) =>
-            map.setPaintProperty(`${id}-fill`, 'fill-color', choroplethFill(next));
+            map.setPaintProperty(
+              `${id}-fill`,
+              'fill-color',
+              choroplethFillExpr(
+                resolveChoroplethStops(next, prop, color, options.stops),
+                prop,
+                color,
+              ),
+            );
         }
         add(
           {
@@ -370,7 +395,10 @@ export function createDataLayer(
         return r.json() as Promise<FeatureCollection>;
       })
       .then(build)
-      .catch((err) => console.error(`[JejuMap] 데이터 레이어 '${id}' 로드 실패:`, err));
+      .catch((err) => {
+        console.error(`[JejuMap] 데이터 레이어 '${id}' 로드 실패:`, err);
+        options.onError?.(err);
+      });
   } else {
     build(options.data);
   }
@@ -397,32 +425,4 @@ export function createDataLayer(
       if (map.getSource(id)) map.removeSource(id);
     },
   };
-}
-
-function bboxOf(fc: FeatureCollection): [[number, number], [number, number]] | null {
-  let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
-  const visit = (c: unknown): void => {
-    if (!Array.isArray(c)) return;
-    if (typeof c[0] === 'number' && typeof c[1] === 'number') {
-      w = Math.min(w, c[0]); e = Math.max(e, c[0]);
-      s = Math.min(s, c[1]); n = Math.max(n, c[1]);
-    } else {
-      c.forEach(visit);
-    }
-  };
-  for (const f of fc.features) {
-    if (f.geometry && 'coordinates' in f.geometry) visit(f.geometry.coordinates);
-  }
-  return Number.isFinite(w) ? [[w, s], [e, n]] : null;
-}
-
-/**
- * choropleth stops를 입력값 오름차순으로 정렬하고 동일 경계값을 제거한다.
- * MapLibre interpolate 표현식은 입력 stop이 '엄격히 오름차순'이어야 하며, 그렇지 않으면
- * 스타일 에러로 레이어 전체가 렌더되지 않는다 — 사용자가 임의 순서로 넘겨도 안전하게.
- */
-function sortStops(stops: Array<[number, string]>): Array<[number, string]> {
-  return [...stops]
-    .sort((a, b) => a[0] - b[0])
-    .filter((s, i, arr) => i === 0 || s[0] > arr[i - 1][0]);
 }

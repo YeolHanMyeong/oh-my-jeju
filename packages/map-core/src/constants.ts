@@ -12,9 +12,9 @@ export const JEJU_CENTER: [number, number] = [126.55, 33.38];
 
 /**
  * 지도 이동 가능 범위 (제주 본섬 + 우도 + 마라도).
- * ⚠️ 지형 DEM 타일 커버리지(poc/terrain/scripts/build_terrain.sh의 BBOX_*)와 일치시킨다.
- * 이 범위가 타일 커버리지를 넘으면 3D에서 빈 영역의 DEM 타일이 누락되어 'load'가 영영
- * 발생하지 않을 수 있다. 지형을 더 넓게 다시 구우면 이 값도 함께 넓혀야 한다.
+ * ⚠️ 지형 DEM 타일 커버리지(단일 출처: poc/terrain/jeju-bbox.json, build_terrain.sh가 소비)와
+ * 일치시킨다. 이 범위가 타일 커버리지를 넘으면 3D에서 빈 영역의 DEM 타일이 누락되어 'load'가
+ * 영영 발생하지 않을 수 있다. 지형을 더 넓게 다시 구우면 jeju-bbox.json과 이 값을 함께 넓힌다.
  */
 export const JEJU_MAX_BOUNDS: [[number, number], [number, number]] = [
   [126.05, 33.05],

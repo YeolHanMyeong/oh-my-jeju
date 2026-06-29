@@ -10,7 +10,7 @@ body,
 }
 
 body {
-  font: 14px/1.5 -apple-system, 'Apple SD Gothic Neo', 'Pretendard', sans-serif;
+  font: 14px / 1.5 -apple-system, "Apple SD Gothic Neo", "Pretendard", sans-serif;
   color: #1c1c28;
 }
 
@@ -172,7 +172,7 @@ body {
 
 /* ── 팝업 ────────────────────────────────────────── */
 .maplibregl-popup-content {
-  font: 13px/1.5 -apple-system, 'Apple SD Gothic Neo', sans-serif;
+  font: 13px / 1.5 -apple-system, "Apple SD Gothic Neo", sans-serif;
   padding: 12px 14px;
   border-radius: 10px;
 }

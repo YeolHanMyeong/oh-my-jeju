@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
-import type { Feature } from 'geojson';
 import type { DataLayerHandle, DataLayerOptions } from '@oh-my-jeju/map-core';
+import type { Feature } from 'geojson';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useJejuMap } from './context.js';
 
 export interface JejuDataLayerProps extends Omit<DataLayerOptions, 'popup'> {
@@ -44,13 +44,12 @@ export function JejuDataLayer({ popup, ...options }: JejuDataLayerProps) {
     hasOnClick,
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: styleKey/hasOnClick는 의도적 재생성 트리거다 — 콜백은 ref 경유로 최신값을 쓰므로 deps에서 제외한다.
   useEffect(() => {
     setPopupFeature(null);
     const handle = jeju.addDataLayer({
       ...optionsRef.current,
-      onClick: hasOnClick
-        ? (f, lngLat) => optionsRef.current.onClick?.(f, lngLat)
-        : undefined,
+      onClick: hasOnClick ? (f, lngLat) => optionsRef.current.onClick?.(f, lngLat) : undefined,
       popup: popupRef.current
         ? (f) => {
             setPopupFeature(f);

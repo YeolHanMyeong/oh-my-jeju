@@ -81,20 +81,27 @@ CSV/SHP라면 [docs/recipes/byod-quickstart.md](docs/recipes/byod-quickstart.md)
 ## 배포
 
 ```bash
-pnpm build          # apps/starter/dist 정적 빌드
+pnpm build          # apps/starter/dist 정적 빌드 (= pnpm --filter starter build)
 ```
+
+> `pnpm build`는 앱만 빌드합니다 — 스타터는 워크스페이스 패키지를 src로 번들하므로 패키지 사전
+> 빌드가 필요 없습니다. 패키지를 npm에 발행할 때만 `pnpm build:packages`를 쓰세요.
 
 - **루트 호스팅**(Cloudflare/Netlify, `user.github.io` 직속): 그대로 올리면 됩니다.
 - **GitHub Pages 프로젝트 사이트**(`user.github.io/<repo>/`처럼 서브패스): base를 맞춰야 에셋·지형
   타일이 404나지 않습니다.
   ```bash
-  GITHUB_PAGES=1 pnpm --filter starter build   # vite.config.ts의 base='/oh-my-jeju/' 적용
+  GITHUB_PAGES=1 pnpm build   # vite.config.ts의 base='/oh-my-jeju/' 적용
   ```
   레포 이름이 다르면 `vite.config.ts`의 base 값을 바꾸세요. 지형 경로는 `import.meta.env.BASE_URL`
   기준이라 base만 맞추면 자동으로 따라갑니다.
 - **베이스맵**: 키리스 `satellite`(Esri)는 프로토타입용입니다 — 공개 배포 앱은 `osm` 또는 `vworld-*`를
   권장합니다. VWorld 키는 발급 시 등록한 **도메인에서만** 동작하므로 배포 도메인을 vworld.kr에
-  등록해야 합니다(미등록 시 403).
+  등록해야 합니다(미등록 시 403). ⚠️ `vworldKey`는 브라우저 타일 URL에 그대로 실려 **공개**됩니다 —
+  비밀이 아니라 도메인으로 제한되는 토큰으로 취급하고, 고권한·유료 키를 재사용하지 마세요.
+- **글리프(라벨 폰트)**: 기본값은 MapLibre 데모 서버(`demotiles.maplibre.org`, SLA 없음)입니다.
+  클러스터 개수 라벨 등 텍스트가 여기에 의존하므로, 공개 배포 앱은 글리프를 self-host하고
+  `<JejuMapView glyphs="...">`로 교체하는 것을 권장합니다(오프라인·차단 환경의 라벨 누락 방지).
 
 ## 로드맵
 

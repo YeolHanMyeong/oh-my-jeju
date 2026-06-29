@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react';
 import {
   JejuDataLayer,
+  type JejuMap,
   JejuMapView,
   JejuRoute,
-  type JejuMap,
   type MapMode,
 } from '@oh-my-jeju/map-react';
-import { SAMPLE_SPOTS, WEST_DRIVE_ROUTE, type Spot, type SpotProps } from './sample-data.js';
+import { useEffect, useState } from 'react';
 import { Sidebar } from './components/Sidebar.js';
+import { SAMPLE_SPOTS, type Spot, type SpotProps, WEST_DRIVE_ROUTE } from './sample-data.js';
 
 export type Viz = 'cluster' | 'heatmap' | 'circle';
 
@@ -68,6 +68,9 @@ export default function App() {
           terrainUrl={`${import.meta.env.BASE_URL}tiles/jeju-terrain.pmtiles`}
           view="hallasan"
           geolocate
+          // 코어가 실제 모드를 강등(예: terrainUrl 없이 3d)하면 토글 state를 동기화
+          onModeChange={setMode}
+          onError={(err) => console.error('[starter] 지도 로드 실패:', err)}
           onReady={(m) => {
             setJeju(m);
             // 개발 중 콘솔 디버깅용: window.__jeju.map 으로 MapLibre API 직접 사용 가능
@@ -85,7 +88,9 @@ export default function App() {
               return (
                 <div className="spot-popup">
                   <strong>{p.name}</strong>
-                  <span className="cat">{p.category} · ★ {p.rating}</span>
+                  <span className="cat">
+                    {p.category} · ★ {p.rating}
+                  </span>
                   <p>{p.desc}</p>
                 </div>
               );

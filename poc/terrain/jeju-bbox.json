@@ -1,0 +1,7 @@
+{
+  "_comment": "제주 지형 타일 커버리지 bbox (경도/위도, EPSG:4326). 단일 출처. 본섬 + 우도 + 마라도. 이 값을 바꾸면 packages/map-core/src/constants.ts의 JEJU_MAX_BOUNDS와 poc/terrain/demo/index.html의 maxBounds도 함께 맞출 것 — 지도 이동 범위가 타일 커버리지를 넘으면 3D에서 DEM 타일 누락으로 'load'가 영영 안 뜬다.",
+  "w": 126.05,
+  "s": 33.05,
+  "e": 127.0,
+  "n": 33.65
+}
